@@ -1,0 +1,1 @@
+# Provides an entry-point script to run the app from the package using the python -m rptodo command
