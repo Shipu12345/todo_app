@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional
 import typer
 from todo import ERRORS, __app_name__, __version__, config, database,  todo_
+from todo.todo_ import Status
 from typing import List, Optional
 
 
@@ -83,6 +84,7 @@ def add(
             f"""with priority: {priority}""",
             fg=typer.colors.GREEN,
         )
+    list_all()
 
 @app.command(name="list")
 def list_all() -> None:
@@ -97,33 +99,49 @@ def list_all() -> None:
     typer.secho("\nto-do list:\n", fg=typer.colors.BLUE, bold=True)
     columns = (
         "ID.  ",
-        "| Priority  ",
-        "| Done  ",
+        "| Priority   ",
+        "| Status  ",
         "| Description  ",
     )
     headers = "".join(columns)
     typer.secho(headers, fg=typer.colors.BLUE, bold=True)
-    typer.secho("-" * len(headers), fg=typer.colors.BLUE)
+    typer.secho("-" * (2*len(headers)), fg=typer.colors.BLUE)
     for id, todo in enumerate(todo_list, 1):
         desc, priority, done = todo.values()
+        if done==0:
+            font_color= typer.colors.BRIGHT_MAGENTA
+        if done==1:
+            font_color= typer.colors.YELLOW
+        if done==2:
+            font_color= typer.colors.BRIGHT_BLUE
+        if done==3:
+            font_color= typer.colors.GREEN
         typer.secho(
             f"{id}{(len(columns[0]) - len(str(id))) * ' '}"
-            f"| ({priority}){(len(columns[1]) - len(str(priority)) - 4) * ' '}"
-            f"| {done}{(len(columns[2]) - len(str(done)) - 2) * ' '}"
-            f"| {desc}",
-            fg=typer.colors.BLUE,
+            f"  | ({priority}){(len(columns[1]) - len(str(priority)) - 4) * ' '}"
+            f"  | {Status(done).name}{(len(columns[2]) - len(str(done)) - 2) * ' '}"
+            f"  | {desc}",
+            fg=font_color,
         )
-    typer.secho("-" * len(headers) + "\n", fg=typer.colors.BLUE)
+    typer.secho("-" * (2*len(headers)) + "\n", fg=typer.colors.BRIGHT_BLUE)
 
 
 
-@app.command(name="complete")
-def set_done(todo_id: int = typer.Argument(...)) -> None:
+@app.command(name="update")
+def set_status(todo_id: int = typer.Argument(...), 
+    status: int = typer.Option(2, "--status", "-s", min=0, max=3)) -> None:
 
-    """Complete a to-do by setting it as done using its TODO_ID."""
+    """
+    Update Status of a  todo by setting it as Status Numbers as Following:
+    Update as: \n
+              ->   ToDo = 0 \n
+              ->   InProgress = 1 \n
+              ->   OnTest = 2 \n
+              ->   Done = 3 \n
+    """
 
     todoer = get_todoer()
-    todo, error = todoer.set_done(todo_id)
+    todo, error = todoer.set_status(todo_id,status)
     if error:
         typer.secho(
             f'Completing to-do # "{todo_id}" failed with "{ERRORS[error]}"',
@@ -135,6 +153,7 @@ def set_done(todo_id: int = typer.Argument(...)) -> None:
             f"""to-do # {todo_id} "{todo['Description']}" completed!""",
             fg=typer.colors.GREEN,
         )
+    list_all()
 
 
 @app.command()
@@ -182,7 +201,7 @@ def remove(
             _remove()
         else:
             typer.echo("Operation canceled")
-
+    list_all()
     
 
 

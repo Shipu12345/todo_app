@@ -8,6 +8,14 @@ from pathlib import Path
 from todo.database import DatabaseHandler
 from typing import Any, Dict, List, NamedTuple
 from todo import DB_READ_ERROR, ID_ERROR
+import enum
+
+
+class Status(enum.Enum):
+    ToDo= 0
+    InProgress=1
+    OnTest=2
+    Done=3
 
 class CurrentTodo(NamedTuple):
     todo: Dict[str, Any]
@@ -22,10 +30,11 @@ class Todoer:
         description_text = " ".join(description)
         if not description_text.endswith("."):
             description_text += "."
+        
         todo = {
             "Description": description_text,
             "Priority": priority,
-            "Done": False,
+            "Status": Status.ToDo.value,
         }
         read = self._db_handler.read_todos()
         if read.error == DB_READ_ERROR:
@@ -38,9 +47,16 @@ class Todoer:
         """Return the current to-do list."""
         read = self._db_handler.read_todos()
         return read.todo_list 
-    def set_done(self, todo_id: int) -> CurrentTodo:
 
-        """Set a to-do as done."""
+    def set_status(self, todo_id: int, status: int) -> CurrentTodo:
+
+        """
+            Set a task to status as done.
+            task ->   ToDo = 0
+                 ->   InProgress = 1
+                 ->   OnTest = 2 
+                 ->   Done = 3 
+        """
         read = self._db_handler.read_todos()
         if read.error:
             return CurrentTodo({}, read.error)
@@ -48,7 +64,7 @@ class Todoer:
             todo = read.todo_list[todo_id - 1]
         except IndexError:
             return CurrentTodo({}, ID_ERROR)
-        todo["Done"] = True
+        todo["Status"] = status
         write = self._db_handler.write_todos(read.todo_list)
         return CurrentTodo(todo, write.error)
 
@@ -70,6 +86,6 @@ class Todoer:
     def remove_all(self) -> CurrentTodo:
 
         """Remove all to-dos from the database."""
-        
+
         write = self._db_handler.write_todos([])
         return CurrentTodo({}, write.error)
