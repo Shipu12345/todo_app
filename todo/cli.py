@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 import typer
 from todo import ERRORS, __app_name__, __version__, config, database,  todo_
-from todo.todo_ import Status
+from todo.todo_ import Status, Priority
 from typing import List, Optional
 
 
@@ -67,9 +67,17 @@ def get_todoer() -> todo_.Todoer:
 @app.command()
 def add(
     description: List[str] = typer.Argument(...), ##  When you pass an ellipsis (...) as the first argument to the constructor of Argument, you’re telling Typer that description is required. 
-    priority: int = typer.Option(2, "--priority", "-p", min=1, max=3),) -> None:
+    priority: int = typer.Option(2, "--priority", "-p", min=1, max=5),) -> None:
 
-    """Add a new to-do with a DESCRIPTION."""
+    """
+    Add a new to-do with a DESCRIPTION:
+        priority -->
+                Low = 1
+                Medium = 2
+                High = 3
+                Urgent = 4
+                Burning = 5
+    """
 
     todoer = get_todoer()
     todo, error = todoer.add(description, priority)
@@ -99,8 +107,8 @@ def list_all() -> None:
     typer.secho("\nto-do list:\n", fg=typer.colors.BLUE, bold=True)
     columns = (
         "ID.  ",
-        "| Priority   ",
-        "| Status  ",
+        "| Priority     ",
+        "| Status       ",
         "| Description  ",
     )
     headers = "".join(columns)
@@ -116,11 +124,15 @@ def list_all() -> None:
             font_color= typer.colors.BRIGHT_BLUE
         if done==3:
             font_color= typer.colors.GREEN
+        if priority==5 or priority==4:
+            font_color=typer.colors.RED
+        
+
         typer.secho(
-            f"{id}{(len(columns[0]) - len(str(id))) * ' '}"
-            f"  | ({priority}){(len(columns[1]) - len(str(priority)) - 4) * ' '}"
-            f"  | {Status(done).name}{(len(columns[2]) - len(str(done)) - 2) * ' '}"
-            f"  | {desc}",
+            f"{id}{ (5-len(str(id))) * ' '}"
+            f"| ({Priority(priority).name}){ (11-len(str(Priority(priority).name))) * ' '}"
+            f"| {Status(done).name}{(13-len(str(Status(done).name))) * ' '}"
+            f"| {desc}",
             fg=font_color,
         )
     typer.secho("-" * (2*len(headers)) + "\n", fg=typer.colors.BRIGHT_BLUE)
@@ -129,28 +141,37 @@ def list_all() -> None:
 
 @app.command(name="update")
 def set_status(todo_id: int = typer.Argument(...), 
-    status: int = typer.Option(2, "--status", "-s", min=0, max=3)) -> None:
+    status: int = typer.Option(2, "--status", "-s", min=0, max=3),
+    priority: int = typer.Option(2, "--priority", "-p", min=1, max=5)) -> None:
 
     """
     Update Status of a  todo by setting it as Status Numbers as Following:
-    Update as: \n
-              ->   ToDo = 0 \n
-              ->   InProgress = 1 \n
-              ->   OnTest = 2 \n
-              ->   Done = 3 \n
+    Update Status as: \n
+                    ->   ToDo = 0 \n
+                    ->   InProgress = 1 \n
+                    ->   OnTest = 2 \n
+                    ->   Done = 3 \n
+    Update Priority as: \n
+                    ->  Low = 1  \n
+                    ->  Medium = 2  \n
+                    ->  High = 3  \n
+                    ->  Urgent = 4  \n
+                    ->  Burning = 5  \n
     """
 
     todoer = get_todoer()
     todo, error = todoer.set_status(todo_id,status)
+    if priority!=2:    
+        todo, error = todoer.set_priority(todo_id,priority)
     if error:
         typer.secho(
-            f'Completing to-do # "{todo_id}" failed with "{ERRORS[error]}"',
+            f'Updating to-do # "{todo_id}" failed with "{ERRORS[error]}"',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
     else:
         typer.secho(
-            f"""to-do # {todo_id} "{todo['Description']}" completed!""",
+            f"""to-do # {todo_id} "{todo['Description']}" Updated!""",
             fg=typer.colors.GREEN,
         )
     list_all()

@@ -78,3 +78,4 @@ def test_add(mock_json_file, description, priority, expected):
     assert todoer.add(description, priority) == expected
     read = todoer._db_handler.read_todos()
     assert len(read.todo_list) == 2
+

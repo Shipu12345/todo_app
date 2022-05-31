@@ -17,6 +17,13 @@ class Status(enum.Enum):
     OnTest=2
     Done=3
 
+class Priority(enum.Enum):
+    Low = 1
+    Medium = 2
+    High = 3
+    Urgent = 4
+    Burning = 5
+
 class CurrentTodo(NamedTuple):
     todo: Dict[str, Any]
     error: int
@@ -65,6 +72,29 @@ class Todoer:
         except IndexError:
             return CurrentTodo({}, ID_ERROR)
         todo["Status"] = status
+        write = self._db_handler.write_todos(read.todo_list)
+        return CurrentTodo(todo, write.error)
+
+
+    def set_priority(self, todo_id: int, priority: int) -> CurrentTodo:
+
+        """
+            Set a updated priority to priority as done.
+            Priority: 
+                    ->  Low = 1
+                    ->  Medium = 2
+                    ->  High = 3
+                    ->  Urgent = 4
+                    ->  Burning = 5
+        """
+        read = self._db_handler.read_todos()
+        if read.error:
+            return CurrentTodo({}, read.error)
+        try:
+            todo = read.todo_list[todo_id - 1]
+        except IndexError:
+            return CurrentTodo({}, ID_ERROR)
+        todo["Priority"] = priority
         write = self._db_handler.write_todos(read.todo_list)
         return CurrentTodo(todo, write.error)
 
