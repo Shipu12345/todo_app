@@ -14,7 +14,6 @@ from todo import ERRORS, __app_name__, __version__, config, database,  todo_
 from todo.todo_ import Status, Priority
 from typing import List, Optional
 
-
 app = typer.Typer()
 
 @app.command()
@@ -61,11 +60,65 @@ def get_todoer() -> todo_.Todoer:
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
+def printing_list(done, priority, desc, id):
 
+    if done==0:
+        font_color= typer.colors.BRIGHT_MAGENTA
+    if done==1:
+        font_color= typer.colors.YELLOW
+    if priority==5 or priority==4:
+        font_color=typer.colors.RED
+    if done==2:
+        font_color= typer.colors.BRIGHT_BLUE
+    if done==3:
+        font_color= typer.colors.GREEN
+    typer.secho(
+        f"{id}{ (5-len(str(id))) * ' '}"
+        f"| ({Priority(priority).name}){ (11-len(str(Priority(priority).name))) * ' '}"
+        f"| {Status(done).name}{(13-len(str(Status(done).name))) * ' '}"
+        f"| {desc}",
+        fg=font_color,
+    )
 
 
 @app.command()
-def add(
+def add(description: List[str] = typer.Option(
+        False,
+        "--description",
+        "-d",
+        help="Details of the task",
+    ),
+    priority: int = typer.Option(2, "--priority", "-p", min=1, max=5),) -> None:
+
+    """
+    Add a new to-do with a DESCRIPTION:
+        priority -->
+                Low = 1
+                Medium = 2
+                High = 3
+                Urgent = 4
+                Burning = 5
+    """
+    if description:
+        cli_add(description=description, priority=priority)
+    else:
+        typer.secho("""Adding A New Task:\n""", fg=typer.colors.GREEN)
+        typer.secho("""Description: """ , fg=typer.colors.CYAN, nl=False, bold=True)
+
+        
+        description=input().split()
+        typer.secho("""         Priority Can be =>
+                                Low = 1        Medium = 2
+                                High = 3       Urgent = 4
+                                    Burning = 5\n """, fg=typer.colors.MAGENTA, nl=False)
+        typer.secho("\nTask Priority: " , fg=typer.colors.CYAN, bold=True, nl=False)
+        priority=int(input())
+        cli_add(description=description, priority=priority)
+
+
+
+@app.command("cli-add")
+def cli_add(
     description: List[str] = typer.Argument(...), ##  When you pass an ellipsis (...) as the first argument to the constructor of Argument, you’re telling Typer that description is required. 
     priority: int = typer.Option(2, "--priority", "-p", min=1, max=5),) -> None:
 
@@ -94,11 +147,18 @@ def add(
         )
     list_all()
 
+
 @app.command(name="list")
-def list_all() -> None:
+def list_all(is_all: bool = typer.Option(
+        False,
+        "--all",
+        "-a",
+        help="Show All Tasks",
+    )) -> None:
     """List all to-dos."""
     todoer = get_todoer()
     todo_list = todoer.get_todo_list()
+    
     if len(todo_list) == 0:
         typer.secho(
             "There are no tasks in the to-do list yet", fg=typer.colors.RED
@@ -116,25 +176,13 @@ def list_all() -> None:
     typer.secho("-" * (2*len(headers)), fg=typer.colors.BLUE)
     for id, todo in enumerate(todo_list, 1):
         desc, priority, done = todo.values()
-        if done==0:
-            font_color= typer.colors.BRIGHT_MAGENTA
-        if done==1:
-            font_color= typer.colors.YELLOW
-        if done==2:
-            font_color= typer.colors.BRIGHT_BLUE
-        if done==3:
-            font_color= typer.colors.GREEN
-        if priority==5 or priority==4:
-            font_color=typer.colors.RED
+        if not is_all :
+            if done!=3:
+                printing_list(desc=desc, priority=priority, done=done, id=id)
+        else:
+            printing_list(desc=desc, priority=priority, done=done, id=id)
         
-
-        typer.secho(
-            f"{id}{ (5-len(str(id))) * ' '}"
-            f"| ({Priority(priority).name}){ (11-len(str(Priority(priority).name))) * ' '}"
-            f"| {Status(done).name}{(13-len(str(Status(done).name))) * ' '}"
-            f"| {desc}",
-            fg=font_color,
-        )
+        
     typer.secho("-" * (2*len(headers)) + "\n", fg=typer.colors.BRIGHT_BLUE)
 
 
