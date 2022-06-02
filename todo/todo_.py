@@ -9,6 +9,7 @@ from todo.database import DatabaseHandler
 from typing import Any, Dict, List, NamedTuple
 from todo import DB_READ_ERROR, ID_ERROR
 import enum
+from datetime import datetime
 
 
 class Status(enum.Enum):
@@ -42,6 +43,7 @@ class Todoer:
             "Description": description_text,
             "Priority": priority,
             "Status": Status.ToDo.value,
+            "created_at": datetime.now().strftime("%d/%m/%y %H:%M"),
         }
         read = self._db_handler.read_todos()
         if read.error == DB_READ_ERROR:

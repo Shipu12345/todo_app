@@ -4,6 +4,7 @@
 Enables CLI for the package
 """
 
+from asyncio import tasks
 from typing import Optional
 import typer
 from .__init__ import __app_name__, __version__
@@ -60,7 +61,7 @@ def get_todoer() -> todo_.Todoer:
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
-def printing_list(done, priority, desc, id):
+def printing_list(done, priority, desc, id , created_at):
 
     if done==0:
         font_color= typer.colors.BRIGHT_MAGENTA
@@ -76,6 +77,7 @@ def printing_list(done, priority, desc, id):
         f"{id}{ (5-len(str(id))) * ' '}"
         f"| ({Priority(priority).name}){ (11-len(str(Priority(priority).name))) * ' '}"
         f"| {Status(done).name}{(13-len(str(Status(done).name))) * ' '}"
+        f"| {created_at} {(14-len(str(created_at))) * ' '}"
         f"| {desc}",
         fg=font_color,
     )
@@ -145,7 +147,7 @@ def cli_add(
             f"""with priority: {priority}""",
             fg=typer.colors.GREEN,
         )
-    list_all()
+    list_all(is_all=False)
 
 
 @app.command(name="list")
@@ -169,18 +171,19 @@ def list_all(is_all: bool = typer.Option(
         "ID.  ",
         "| Priority     ",
         "| Status       ",
+        "| Created At     ",
         "| Description  ",
     )
     headers = "".join(columns)
     typer.secho(headers, fg=typer.colors.BLUE, bold=True)
     typer.secho("-" * (2*len(headers)), fg=typer.colors.BLUE)
     for id, todo in enumerate(todo_list, 1):
-        desc, priority, done = todo.values()
+        desc, priority, done, created_at = todo.values()
         if not is_all :
             if done!=3:
-                printing_list(desc=desc, priority=priority, done=done, id=id)
+                printing_list(desc=desc, priority=priority, done=done, id=id,  created_at=created_at)
         else:
-            printing_list(desc=desc, priority=priority, done=done, id=id)
+            printing_list(desc=desc, priority=priority, done=done, id=id, created_at=created_at)
         
         
     typer.secho("-" * (2*len(headers)) + "\n", fg=typer.colors.BRIGHT_BLUE)
@@ -188,9 +191,76 @@ def list_all(is_all: bool = typer.Option(
 
 
 @app.command(name="update")
+def set_updated_status(todo_id: int = typer.Option(
+        0,
+        "--id",
+        help="Task ID..",
+    ), 
+    status: int = typer.Option(-1, "--status", "-s", min=-1, max=3),
+    priority: int = typer.Option(-1, "--priority", "-p", min=-1, max=5)) -> None:
+    print(ERRORS)
+    """
+    Update Status of a  todo by setting it as Status Numbers as Following:
+    Update Status as: \n
+                    ->   ToDo = 0 \n
+                    ->   InProgress = 1 \n
+                    ->   OnTest = 2 \n
+                    ->   Done = 3 \n
+    Update Priority as: \n
+                    ->  Low = 1  \n
+                    ->  Medium = 2  \n
+                    ->  High = 3  \n
+                    ->  Urgent = 4  \n
+                    ->  Burning = 5  \n
+    """
+
+    if todo_id!=0:
+        set_status(todo_id=todo_id, status=status, priority=priority)
+    else:
+        typer.secho("""Updating A Task:\n""", fg=typer.colors.GREEN)
+        typer.secho("""\nTask ID: """, fg=typer.colors.CYAN, bold=True, nl=False)
+        try:
+            task_id = int(input())
+        except:
+            typer.secho(
+                    f'Updating to-do # "{todo_id}" failed with "{ERRORS[6]}"\ncommand: todo list [-a] to see all the tasks',
+            fg=typer.colors.RED,)
+            raise typer.Exit(1)
+            
+        typer.secho("""         Priority Can be =>    (Keep empty if you do not want to change the priority)
+                                Low = 1        Medium = 2
+                                High = 3       Urgent = 4
+                                    Burning = 5\n """, fg=typer.colors.MAGENTA, nl=False)
+        typer.secho("""\nPriority: """, fg=typer.colors.CYAN, bold=True, nl=False)
+        priority = input()
+        if priority!='':
+            priority=int(priority) 
+        else:
+            priority=-1
+        typer.secho("""         Status Can be =>    (Keep empty if you do not want to change the Status)
+                                ToDo = 0        InProgress = 1
+                                OnTest = 2      Done = 3
+                                    \n """, fg=typer.colors.MAGENTA, nl=False)
+        typer.secho("""\nStatus: """, fg=typer.colors.CYAN, bold=True, nl=False)
+        status=input()
+        if status!='':
+            status=int(status)
+        else:
+            status=-1
+        print(f"{todo_id =: }{ priority =: }{ task_id =: }{ status =: }")
+        if priority==-1 and status==-1:
+            typer.secho("""\nNothing is updated,  please update with a valid Status or Priority.""", fg=typer.colors.MAGENTA, bold=True, nl=False)
+            list_all(is_all=False)
+        else:
+            set_status(todo_id=task_id, status=status, priority=priority)
+
+
+
+@app.command(name="cli-update")
 def set_status(todo_id: int = typer.Argument(...), 
-    status: int = typer.Option(2, "--status", "-s", min=0, max=3),
-    priority: int = typer.Option(2, "--priority", "-p", min=1, max=5)) -> None:
+    status: int = typer.Option(-1, "--status", "-s", min=0, max=3),
+    priority: int = typer.Option(-1, "--priority", "-p", min=1, max=5)) -> None:
+
 
     """
     Update Status of a  todo by setting it as Status Numbers as Following:
@@ -208,8 +278,9 @@ def set_status(todo_id: int = typer.Argument(...),
     """
 
     todoer = get_todoer()
-    todo, error = todoer.set_status(todo_id,status)
-    if priority!=2:    
+    if status!=-1: 
+        todo, error = todoer.set_status(todo_id,status)
+    if priority!=-1:    
         todo, error = todoer.set_priority(todo_id,priority)
     if error:
         typer.secho(
@@ -222,7 +293,7 @@ def set_status(todo_id: int = typer.Argument(...),
             f"""to-do # {todo_id} "{todo['Description']}" Updated!""",
             fg=typer.colors.GREEN,
         )
-    list_all()
+    list_all(is_all=False)
 
 
 @app.command()
@@ -270,7 +341,7 @@ def remove(
             _remove()
         else:
             typer.echo("Operation canceled")
-    list_all()
+    list_all(is_all=False)
     
 
 
